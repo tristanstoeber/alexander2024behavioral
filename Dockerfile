@@ -16,6 +16,8 @@ RUN R -e "IRkernel::installspec(user = FALSE)"
 
 RUN R -e "install.packages('Rtrack', dependencies=TRUE, repos='http://cran.rstudio.com/')"
 RUN R -e "install.packages('rstatix', dependencies=TRUE, repos='http://cran.rstudio.com/')"
+RUN R -e "install.packages('bspm', dependencies=TRUE, repos = 'https://cran.r-project.org')"
+
 RUN pip install openpyxl
 
 RUN groupadd -g 999 jovyan && \

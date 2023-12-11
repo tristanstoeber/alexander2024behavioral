@@ -2,6 +2,21 @@ import numpy as np
 import os
 import pandas as pd
 from tqdm import tqdm
+import shapely.geometry as sg
+
+def detect_circle_boundaries(x_coordinates, y_coordinates):
+    # Find the maximum and minimum x, y coordinates
+    max_x, min_x = max(x_coordinates), min(x_coordinates)
+    max_y, min_y = max(y_coordinates), min(y_coordinates)
+
+    # Calculate the center coordinates as the midpoint between max and min values
+    center_x = (max_x + min_x) / 2
+    center_y = (max_y + min_y) / 2
+
+    # Calculate the radius as half of the maximum distance between x or y values
+    radius = max(max_x - min_x, max_y - min_y) / 2
+
+    return center_x, center_y, radius
 
 def load_finfo_probe(
     path,
