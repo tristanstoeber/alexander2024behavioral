@@ -2,7 +2,6 @@ import numpy as np
 import os
 import pandas as pd
 from tqdm import tqdm
-import shapely.geometry as sg
 
 def detect_circle_boundaries(x_coordinates, y_coordinates):
     # Find the maximum and minimum x, y coordinates
