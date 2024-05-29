@@ -14,6 +14,11 @@ RUN pip install git+https://github.com/CINPLA/spatial-maps.git
 RUN R -e "install.packages('IRkernel', options(bspm.sudo = TRUE))"
 RUN R -e "IRkernel::installspec(user = FALSE)"
 
+RUN R -e "remove.packages("Matrix")"
+RUN R -e "remove.packages("lme4")"
+RUN R -e "install.packages("lme4", type = "source")"
+
+
 RUN R -e "install.packages('Rtrack', dependencies=TRUE, repos='http://cran.rstudio.com/')"
 RUN R -e "install.packages('rstatix', dependencies=TRUE, repos='http://cran.rstudio.com/')"
 RUN R -e "install.packages('bspm', dependencies=TRUE, repos = 'https://cran.r-project.org')"

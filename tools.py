@@ -52,6 +52,17 @@ def detect_center_based_on_quadrant_coordinates(q1, q2, q3, q4):
     return center_x, center_y
 
 
+def extract_radius_from_quadrant_positions(q1, q2, q3, q4):
+    Q = [q1, q2, q3, q4]
+    
+    ls_diameter = []
+    for i in np.arange(2):
+        vec_q = np.array(Q[i])-np.array(Q[2+i])
+        diameter_i = np.sqrt(np.sum(vec_q**2))
+        ls_diameter.append(diameter_i)
+    radius = np.mean(ls_diameter)/2.
+    
+    return radius
 
 def detect_circle_boundaries(x_coordinates, y_coordinates):
     # Find the maximum and minimum x, y coordinates
@@ -246,3 +257,24 @@ def load_recording(
     df = df[column_sel]
 
     return df
+
+def determine_start_end_of_blobs(a, min_len=None):
+    m = np.concatenate(( [True], ~a, [True] ))  # Mask                                                                                                                                                             
+    ss = np.flatnonzero(m[1:] != m[:-1]).reshape(-1,2)   # Start-stop limits                                                                                                                                       
+    if min_len:
+        ss_bool = (ss[:,1] - ss[:,0]) >= min_len
+        ss = ss[ss_bool]
+        # if no value is present modify output                                                                                                                                                                     
+        if ~np.any(ss_bool):
+            ss = ss.flatten()
+    return ss
+
+def time_in_blobs(ss, t):
+    dt = np.median(np.diff(t))
+    # add one timestep
+    t = np.append(t, np.max(t)+dt)
+    ls_t = []
+    for ss_i in ss:
+        dt = t[ss_i[1]] - t[ss_i[0]]
+        ls_t.append(dt)
+    return np.sum(ls_t)
