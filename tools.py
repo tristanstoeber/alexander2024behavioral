@@ -2,6 +2,8 @@ import numpy as np
 import os
 import pandas as pd
 from tqdm import tqdm
+import re
+
 
 def detect_center_based_on_quadrant_coordinates(q1, q2, q3, q4):
     # Extract coordinates from the tuples
@@ -77,7 +79,7 @@ def detect_circle_boundaries(x_coordinates, y_coordinates):
     radius = max(max_x - min_x, max_y - min_y) / 2
 
     return center_x, center_y, radius
-
+  
 def load_finfo_train(path):
     ls_finfo = []
     
@@ -193,7 +195,7 @@ def load_finfo_probe(
 
                 dct_pltfrm_quadrants = {
                     'platform_name': platform_name,
-                    'platform_pos': platform_pos
+                    'platform_xy': platform_pos
                 }               
                 
                 # add quadrant info
@@ -278,3 +280,125 @@ def time_in_blobs(ss, t):
         dt = t[ss_i[1]] - t[ss_i[0]]
         ls_t.append(dt)
     return np.sum(ls_t)
+
+def extract_trialinfo(path):
+    """
+    Function to extract trial information from .xlsx files in a given directory.
+
+    Parameters:
+    path (str): The directory path where the .xlsx files are located.
+
+    Returns:
+    df_finfo (DataFrame): A DataFrame containing the extracted trial information.
+    """
+
+    # Initialize an empty list to store file information
+    file_info = []
+
+    # Walk through the directory to extract trial info
+    for root, _, files in os.walk(path):
+        for file in files:
+            # Check for .xlsx files that do not contain 'COORDINATES' in their name
+            if file.endswith('.xlsx') and "Coordinates" not in file:
+                relative_path = os.path.join(root, file)
+
+                # Load spreadsheet
+                df = pd.read_excel(
+                    relative_path,
+                    index_col=0,
+                    usecols=[0, 1],
+                    header=None,
+                    nrows=40)
+
+                # Extract animal id and cohort
+                animal_id = df.loc['SubjectID'].values[0]
+                cohort = animal_id[0]
+
+                # Extract phase and day
+                arena_settings = df.loc['Arena settings'].values[0]
+                phase = arena_settings[:3]
+                day = arena_settings[-1]
+
+                # Extract experiment
+                experiment = df.loc['Experiment'].values[0][:3]
+
+                # Extract Trial ID
+                trial_id = df.loc['Trial ID'].values[0]
+
+                # Store the extracted information in a dictionary
+                file_dict = {
+                    "fname": file,
+                    "relative_path": relative_path,
+                    "experiment": experiment,
+                    "cohort": cohort,
+                    "phase": phase,
+                    "animal_id": animal_id,
+                    "day": day,
+                    "trial_id": trial_id,
+                }
+
+                # Append the dictionary to the list
+                file_info.append(file_dict)
+
+    # Create a DataFrame from the list of file information
+    df_finfo = pd.DataFrame(file_info)
+    df_finfo['day'] = df_finfo['day'].astype('int64')
+    # extract trial per day and animal
+    df_finfo = df_finfo.sort_values(by='trial_id')
+    df_finfo['trial'] = df_finfo.groupby(['animal_id', 'day']).cumcount() + 1
+
+    return df_finfo
+
+def extract_mazeinfo(path, phase):
+    """
+    Function to extract platform and quadrant information from .xlsx files in a given directory.
+    Specific for file format of initial learning trials or reversal learning trials.
+
+    Parameters:
+    path (str): The directory path where the .xlsx files are located.
+    phase (str): The phase of the experiment, either 'Hid' or 'Rev'.
+
+    Returns:
+    df_mazeinfo (DataFrame): A DataFrame containing the extracted platform and quadrant information.
+    """
+    if phase not in ["Rev", "Hid"]:
+        raise ValueError("Phase must be either 'Rev' or 'Hid'")
+        
+    # Initialize an empty list to store maze information
+    maze_info = []
+
+    # Walk through the directory to extract maze info
+    for root, _, files in os.walk(path):
+        for file in files:
+            # Check for .xlsx files that contain 'Coordinates' in their name
+            if file.endswith('.xlsx') and ("_Coordinates" in file or " Coordinates" in file or ".Coordinates" in file):
+                path_i = os.path.join(root, file)
+                # Split the filename into components
+                file_components = re.split('[._]', file)
+
+                # Load spreadsheet and get coordinates
+                df = pd.read_excel(path_i, usecols=[0, 1, 2], header=[2], names=['type', 'x', 'y'])
+                df['platform_xy'] = list(zip(df.loc[:, 'x'], df.loc[:, 'y']))
+
+                if phase == 'Hid':
+                    # Filter out rows with days
+                    df = df[df['type'].notna() & df['type'].str.startswith('Day')]
+                    df['day'] = df['type'].str.extract('(\d+)', expand=False).astype(int)
+
+                    df['type'] = 'Platform'
+                elif phase == 'Rev':
+                    # Filter out platform
+                    df = df[df['type']=='Platform']
+                    df['day'] = int(file_components[3].split()[0][3:])
+
+                # Append file information to the dictionary
+                df['experiment'] = file_components[0]
+                df['cohort'] = file_components[1]
+                df['phase'] = phase
+
+                maze_info.append(df)
+
+    # Create a DataFrame from the list of maze information
+    df_mazeinfo = pd.concat(maze_info, ignore_index=True)
+
+    return df_mazeinfo

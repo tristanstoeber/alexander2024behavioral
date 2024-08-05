@@ -4,7 +4,13 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
 
-def plot_measure_learning_relearning(df_info, ms, unit, dct_repl, savefig=False, **kwargs):
+def plot_measure_learning_relearning(
+    df_info,
+    ms,
+    unit,
+    #dct_repl,
+    savefig=False,
+    **kwargs):
     fig, ax = plt.subplots(1, 2, figsize=(7.5, 5), sharey=True)
     fig.suptitle(ms)
     plt.subplots_adjust(wspace=0.1, hspace=0)
@@ -12,9 +18,9 @@ def plot_measure_learning_relearning(df_info, ms, unit, dct_repl, savefig=False,
     for i, fname_i in enumerate(['MWM', 'MWM-Rev']):
         df_i = df_info[df_info['fname']==fname_i]
         sns.lineplot(
-            x='days_adjusted',
+            x='day',
             y=ms,
-            hue='treatment',
+            hue='Geno',
             data=df_i,
             ax=ax[i],
             **kwargs)
@@ -39,9 +45,9 @@ def plot_measure_learning_relearning(df_info, ms, unit, dct_repl, savefig=False,
     leg = ax[0].get_legend()
     leg.set_title('')
     ls_str_new = []
-    for text_i in leg.texts:
-        str_new = dct_repl[text_i.get_text()]
-        text_i.set_text(str_new)
+    #for text_i in leg.texts:
+    #    str_new = dct_repl[text_i.get_text()]
+    #    text_i.set_text(str_new)
     plt.draw()
     
     ax[1].get_legend().remove()
@@ -152,4 +158,81 @@ def plot_trajectory(
     else:
         plt.close()
     return fig, ax, ax_dupl
+
+def plot_occupancy_maps(
+    dataframe,
+    groups,
+    dct_treat,
+    r_pool, fac_scale_border, fac_scale_pltfrm, 
+    pos_pltfrm, d_pltfrm, pos_pltfrm_old,
+    fname=None,
+    dct_kwargs={}):
+
+    fig, ax = plt.subplots(
+        len(groups)+1, 3,
+        **dct_kwargs['subplots'])
+    for i, key in enumerate(dct_treat.keys()):
+        ax[0, i+1].set_title(key)
+
+    for i, (d_i, n_i) in enumerate(groups.items()):
+        df_sel = dataframe[dataframe['grp_day']==d_i]
+        
+        ax[i, 0].axis('off')
+        ax[i, 0].text(0.3, 0.6, n_i)
+        
+        for j, (key, value) in enumerate(dct_treat.items()):
+            occ_mp = df_sel[df_sel['treatment']==value]['occupancy_map']
+    
+            imshw = ax[i, j+1].imshow(
+                    occ_mp.iloc[0].T,
+                    **dct_kwargs['imshow'])
+
+            ax[i, j+1].set_aspect('equal')
+            ax[i, j+1].axis('off')
+
+            # draw platform locations
+
+            # create axis
+            ax_dupl = ax[i, j+1].twinx()
+            ax_dupl.axis('off')
+            ax_dupl.set_aspect('equal')
+            lim = r_pool*fac_scale_border
+            ax_dupl.set_xlim(-lim, lim)
+            ax_dupl.set_ylim(-lim, lim)
+
+
+            s_pltfrm = d_pltfrm*1.5
+            ell_pltfrm = patches.Ellipse(
+                (pos_pltfrm[0],
+                 pos_pltfrm[1]),
+                s_pltfrm, s_pltfrm,
+                linewidth=0, edgecolor='r', facecolor='r')
+
+            ax_dupl.add_patch(ell_pltfrm)
+
+            if np.any(pos_pltfrm_old):
+                ell_pltfrm_relearning = patches.Ellipse(
+                    (pos_pltfrm_old[0],
+                     pos_pltfrm_old[1]),
+                    s_pltfrm, s_pltfrm,
+                    linewidth=1,
+                    linestyle=':',
+                    edgecolor='r', facecolor=(0,0,0,0))
+
+                ax_dupl.add_patch(ell_pltfrm_relearning)
+
+        # add colorbar 
+        #cax = plt.axes([.37, -.07, .5, 1.])
+        cax = plt.axes([.37, .05, .5, 1.])
+
+        cax.axis('off')
+        cbar = fig.colorbar(
+            imshw, ax=cax,
+            **dct_kwargs['colorbar']
+        )
+        [ax_i.axis('off') for ax_i in ax[-1, :]]
+        
+    if fname:
+        plt.tight_layout()
+        fig.savefig(fname)
 

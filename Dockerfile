@@ -3,7 +3,7 @@ FROM eddelbuettel/r2u:22.04
 USER root
 
 RUN apt-get update
-RUN apt-get -y install pip python3-dev git
+RUN apt-get -y install pip python3-dev git odfpy
 
 RUN pip install --upgrade pip setuptools
 RUN pip install --upgrade jupyterlab
